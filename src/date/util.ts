@@ -6,38 +6,45 @@ export const dateToFinnishLocale = (date: Date) => {
   })
 }
 
+const SECONDS_IN_A_MINUTE = 60
+const MINUTES_IN_AN_HOUR = 60
+const HOURS_IN_A_DAY = 24
+const MILLISECONDS_IN_A_SECOND = 1000
+
 export const parseDurationParts = (duration: number) => {
-  const totalS = Math.round(Math.floor(duration / 1000))
-  const totalM = Math.round(Math.floor(totalS / 60))
-  const totalH = Math.round(Math.floor(totalM / 60))
+  const totalSeconds = Math.floor(duration / MILLISECONDS_IN_A_SECOND)
+  const totalMinutes = Math.floor(totalSeconds / SECONDS_IN_A_MINUTE)
+  const totalHours = Math.floor(totalMinutes / MINUTES_IN_AN_HOUR)
 
-  const d = Math.round(Math.floor(totalH / 24))
-  const s = Math.round(totalS % 60)
-  const m = Math.round(totalM % 60)
-  const h = Math.round(totalH % 24)
+  const days = Math.floor(totalHours / HOURS_IN_A_DAY)
+  const seconds = totalSeconds % SECONDS_IN_A_MINUTE
+  const minutes = totalMinutes % MINUTES_IN_AN_HOUR
+  const hours = totalHours % HOURS_IN_A_DAY
 
-  return {
-    s,
-    m,
-    h,
-    d
-  }
+  return { seconds, minutes, hours, days }
 }
 
+const pluralize = (unit: string, count: number, pluralSuffix: string) =>
+  `${count} ${unit}${count === 1 ? '' : pluralSuffix}`
+
 export const durationToFinishLocale = (duration: number) => {
-  const { s, m, h, d } = parseDurationParts(duration)
-  if (d > 0) {
-    return `${d === 1 ? '1 päivä' : d + ' päivää'}, ${
-      h === 1 ? '1 tunti' : h + ' tuntia'
-    } ja ${m === 1 ? '1 minuutti' : m + ' minuuttia'}`
-  } else if (h > 0) {
-    return `${h === 1 ? '1 tunti' : h + ' tuntia'}, ${
-      m === 1 ? '1 minuutti' : m + ' minuuttia'
-    } ja ${s === 1 ? 's sekunti' : s + ' sekuntia'}`
-  } else if (m > 0) {
-    return `${m === 1 ? '1 minuutti' : m + ' minuuttia'} ja ${
-      s === 1 ? 's sekunti' : s + ' sekuntia'
-    }`
+  const { seconds, minutes, hours, days } = parseDurationParts(duration)
+  const parts = []
+
+  if (days > 0) {
+    parts.push(pluralize('päivä', days, 'ä'))
+    parts.push(pluralize('tunti', hours, 'a'))
+    parts.push(pluralize('minuutti', minutes, 'a'))
+  } else if (hours > 0) {
+    parts.push(pluralize('tunti', hours, 'a'))
+    parts.push(pluralize('minuutti', minutes, 'a'))
+    parts.push(pluralize('sekunti', seconds, 'a'))
+  } else if (minutes > 0) {
+    parts.push(pluralize('minuutti', minutes, 'a'))
+    parts.push(pluralize('sekunti', seconds, 'a'))
+  } else {
+    parts.push(pluralize('sekunti', seconds, 'a'))
   }
-  return `${s === 1 ? 's sekunti' : s + ' sekuntia'}`
+
+  return parts.join(', ').replace(/, ([^,]*)$/, ' ja $1') // replace last comma with "ja"
 }
