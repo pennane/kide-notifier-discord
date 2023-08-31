@@ -4,10 +4,10 @@ import { getDiscordClient } from './client'
 import { createProductEmbed } from './embed'
 import { getAllMessagingChannels } from './util'
 
-export const handleNewEvents = async (events: KideProduct[]): Promise<void> => {
+export const handleNew = async (products: KideProduct[]): Promise<void> => {
   const client = getDiscordClient()
   const channels = getAllMessagingChannels(client)
-  const embeds = events.map((event) => createProductEmbed(event))
+  const embeds = products.map((product) => createProductEmbed(product))
   const chunks = R.splitEvery(7, embeds)
 
   for (const embeds of chunks) {
@@ -17,13 +17,11 @@ export const handleNewEvents = async (events: KideProduct[]): Promise<void> => {
   }
 }
 
-export const handleUpdatedEvents = async (
-  events: KideProduct[]
-): Promise<void> => {
+export const handleUpdated = async (products: KideProduct[]): Promise<void> => {
   const client = getDiscordClient()
   const channels = getAllMessagingChannels(client)
-  const embeds = events.map((event) =>
-    createProductEmbed(event, 'Myyntiajankohta muuttunut')
+  const embeds = products.map((product) =>
+    createProductEmbed(product, 'Myyntiajankohta muuttunut')
   )
   const chunks = R.splitEvery(7, embeds)
 
@@ -34,12 +32,12 @@ export const handleUpdatedEvents = async (
   }
 }
 
-export const handleSalesStartingSoonEvent = async (
-  event: KideProduct
+export const handleSalesStartingSoon = async (
+  product: KideProduct
 ): Promise<void> => {
   const client = getDiscordClient()
   const channels = getAllMessagingChannels(client)
-  const embed = createProductEmbed(event, 'Myynti alkaa pian')
+  const embed = createProductEmbed(product, 'Myynti alkaa pian')
 
   for (const channel of channels) {
     channel.send({ embeds: [embed] })

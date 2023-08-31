@@ -1,12 +1,11 @@
 import {
   KideFetchParams,
   KideProductsResponseSchema,
-  KideProduct,
-  KideProductLocation,
-  KideProductType
+  KideProduct
 } from './models'
 import axios from 'axios'
 import { createProductFetchUrl } from './util'
+import { PRODUCT_FETCH_PARAMS } from '../config/kide'
 
 const fetchProducts = async (
   params: KideFetchParams
@@ -17,10 +16,4 @@ const fetchProducts = async (
   return data.model
 }
 
-export const fetchCapitalAreaKideEvents = () =>
-  fetchProducts({
-    categoryId: null,
-    city: KideProductLocation.Pääkaupunkiseutu,
-    companyId: null,
-    productType: KideProductType.Event
-  })
+export const fetchConfiguredProducts = () => fetchProducts(PRODUCT_FETCH_PARAMS)

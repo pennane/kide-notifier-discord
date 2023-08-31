@@ -1,75 +1,75 @@
 import * as R from 'ramda'
 import { scheduleJob } from 'node-schedule'
 import {
-  handleUpdatedEvents,
-  handleNewEvents,
-  handleSalesStartingSoonEvent
+  handleUpdated,
+  handleNew,
+  handleSalesStartingSoon
 } from './discord/handlers'
-import { fetchCapitalAreaKideEvents } from './kide/api'
+import { fetchConfiguredProducts } from './kide/api'
 import { KideProduct } from './kide/models'
-import { gKnownEvents, gReminderTasks } from './store'
+import { productCache, reminderTaskCache } from './store'
 
-type Partitioned = [oldEvents: KideProduct[], newEvents: KideProduct[]]
+type Partitioned = [old: KideProduct[], new: KideProduct[]]
 
-const toPartitioned = R.partition((event: KideProduct) =>
-  gKnownEvents.has(event.id)
+const toPartitioned = R.partition((product: KideProduct) =>
+  productCache.has(product.id)
 )
 
-const getUpdatedEvents = ([oldEvents]: Partitioned) =>
-  oldEvents.filter(
-    (event) =>
-      event.dateSalesFrom.getTime() !==
-      gKnownEvents.get(event.id)!.dateSalesFrom.getTime()
+const getUpdatedProducts = ([oldProducts]: Partitioned) =>
+  oldProducts.filter(
+    (product) =>
+      product.dateSalesFrom.getTime() !==
+      productCache.get(product.id)!.dateSalesFrom.getTime()
   )
 
-const getNewEvents = ([_, newEvents]: Partitioned) => newEvents
+const getNewProducts = ([_, newProducts]: Partitioned) => newProducts
 
-const getUpcomingEvents = (partitionedEvents: Partitioned): KideProduct[] =>
-  partitionedEvents
+const getUpcomingProducts = (partitionedProducts: Partitioned): KideProduct[] =>
+  partitionedProducts
     .flat()
-    .filter((event) => event.dateSalesFrom.getTime() > Date.now())
+    .filter((product) => product.dateSalesFrom.getTime() > Date.now())
 
-const notifyOfUpdatedEvents = R.pipe(getUpdatedEvents, handleUpdatedEvents)
-const notifyOfNewEvents = R.pipe(getNewEvents, handleNewEvents)
+const notifyOfUpdatedProducts = R.pipe(getUpdatedProducts, handleUpdated)
+const notifyOfNewProducts = R.pipe(getNewProducts, handleNew)
 
-const upsertEventsToStore = (partitioned: Partitioned) =>
-  partitioned.flat().forEach((event) => gKnownEvents.set(event.id, event))
+const upsertProductsToStore = (partitioned: Partitioned) =>
+  partitioned.flat().forEach((product) => productCache.set(product.id, product))
 
 export const clearSalesStartingSoonJobs = () => {
-  for (const task of gReminderTasks.values()) {
+  for (const task of reminderTaskCache.values()) {
     task.cancel()
   }
-  gReminderTasks.clear()
+  reminderTaskCache.clear()
 }
 
 const TWENTY_MIN_IN_MS = 1000 * 60 * 20
 
-const scheduleSalesStartingSoonJobs = (events: KideProduct[]) => {
-  for (const event of events) {
+const scheduleSalesStartingSoonJobs = (products: KideProduct[]) => {
+  for (const product of products) {
     const task = scheduleJob(
-      new Date(event.dateSalesFrom.getTime() - TWENTY_MIN_IN_MS),
+      new Date(product.dateSalesFrom.getTime() - TWENTY_MIN_IN_MS),
       () => {
-        handleSalesStartingSoonEvent(event)
+        handleSalesStartingSoon(product)
       }
     )
-    gReminderTasks.set(event.id, task)
+    reminderTaskCache.set(product.id, task)
   }
 }
 
 const handleSalesStartingSoonJobs = R.pipe(
-  getUpcomingEvents,
+  getUpcomingProducts,
   R.tap(clearSalesStartingSoonJobs),
   scheduleSalesStartingSoonJobs
 )
 
 export const mainTask = () =>
-  fetchCapitalAreaKideEvents()
+  fetchConfiguredProducts()
     .then(toPartitioned)
     .then(
       R.juxt([
-        notifyOfNewEvents,
-        notifyOfUpdatedEvents,
-        upsertEventsToStore,
+        notifyOfNewProducts,
+        notifyOfUpdatedProducts,
+        upsertProductsToStore,
         handleSalesStartingSoonJobs
       ])
     )
